@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskManager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f0f11;
+      --surface:  #18181c;
+      --border:   #2a2a30;
+      --muted:    #52525e;
+      --text:     #e8e8ec;
+      --sub:      #9494a0;
+      --accent:   #a78bfa;
+      --green:    #34d399;
+      --yellow:   #fbbf24;
+      --red:      #f87171;
+      --radius:   12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "DM Sans", sans-serif;
+      font-size: 15px;
+      min-height: 100vh;
+    }
+
+    /* ── Auth screen ───────────────────────────────── */
+    #auth-screen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .auth-card h1 {
+      font-family: "DM Serif Display", serif;
+      font-size: 2rem;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+
+    .auth-card p { color: var(--sub); margin-bottom: 32px; }
+
+    .tabs { display: flex; gap: 4px; background: var(--bg); border-radius: 8px; padding: 4px; margin-bottom: 28px; }
+    .tab-btn {
+      flex: 1; padding: 8px; border: none; border-radius: 6px;
+      background: transparent; color: var(--sub); font-size: 14px;
+      font-family: "DM Sans", sans-serif; font-weight: 500; cursor: pointer;
+      transition: all .2s;
+    }
+    .tab-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px #0004; }
+
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 13px; font-weight: 500; color: var(--sub); margin-bottom: 6px; }
+    .field input {
+      width: 100%; padding: 10px 14px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 14px;
+      font-family: "DM Sans", sans-serif; outline: none;
+      transition: border-color .2s;
+    }
+    .field input:focus { border-color: var(--accent); }
+
+    .btn-primary {
+      width: 100%; padding: 11px;
+      background: var(--accent); border: none; border-radius: 8px;
+      color: #fff; font-size: 14px; font-weight: 600;
+      font-family: "DM Sans", sans-serif; cursor: pointer;
+      transition: opacity .2s;
+    }
+    .btn-primary:hover { opacity: .85; }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+    #auth-error { color: var(--red); font-size: 13px; margin-top: 12px; text-align: center; min-height: 18px; }
+
+    /* ── App shell ─────────────────────────────────── */
+    #app-screen { display: none; min-height: 100vh; }
+
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--bg); z-index: 10;
+    }
+
+    .logo { font-family: "DM Serif Display", serif; font-size: 1.35rem; }
+    .logo span { color: var(--accent); }
+
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    #user-name { font-size: 13px; color: var(--sub); }
+
+    .btn-ghost {
+      padding: 7px 14px; border: 1px solid var(--border); border-radius: 8px;
+      background: transparent; color: var(--sub); font-size: 13px;
+      font-family: "DM Sans", sans-serif; cursor: pointer; transition: all .2s;
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--text); }
+
+    main { max-width: 900px; margin: 0 auto; padding: 36px 24px; }
+
+    /* ── Stats bar ─────────────────────────────────── */
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 36px; }
+
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px 24px;
+    }
+    .stat-card .num {
+      font-family: "DM Serif Display", serif; font-size: 2.2rem;
+      line-height: 1; margin-bottom: 4px;
+    }
+    .stat-card .label { font-size: 13px; color: var(--sub); }
+    .stat-card.todo  .num { color: var(--yellow); }
+    .stat-card.prog  .num { color: var(--accent); }
+    .stat-card.done  .num { color: var(--green);  }
+
+    /* ── Add task form ──────────────────────────────── */
+    .add-form {
+      display: flex; gap: 10px; margin-bottom: 28px; flex-wrap: wrap;
+    }
+    .add-form input {
+      flex: 1; min-width: 160px; padding: 10px 14px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 14px;
+      font-family: "DM Sans", sans-serif; outline: none;
+      transition: border-color .2s;
+    }
+    .add-form input:focus { border-color: var(--accent); }
+    .add-form select {
+      padding: 10px 12px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 14px;
+      font-family: "DM Sans", sans-serif; outline: none; cursor: pointer;
+    }
+    .add-form button {
+      padding: 10px 22px; background: var(--accent); border: none;
+      border-radius: 8px; color: #fff; font-size: 14px; font-weight: 600;
+      font-family: "DM Sans", sans-serif; cursor: pointer; transition: opacity .2s;
+      white-space: nowrap;
+    }
+    .add-form button:hover { opacity: .85; }
+
+    /* ── Filters ────────────────────────────────────── */
+    .filters { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .filter-btn {
+      padding: 6px 14px; border: 1px solid var(--border); border-radius: 20px;
+      background: transparent; color: var(--sub); font-size: 13px;
+      font-family: "DM Sans", sans-serif; cursor: pointer; transition: all .2s;
+    }
+    .filter-btn.active, .filter-btn:hover {
+      border-color: var(--accent); color: var(--accent);
+      background: #a78bfa12;
+    }
+
+    /* ── Task list ──────────────────────────────────── */
+    #task-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .task-item {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 20px;
+      display: flex; align-items: center; gap: 14px;
+      transition: border-color .2s, transform .15s;
+      animation: slideIn .25s ease;
+    }
+    .task-item:hover { border-color: var(--muted); transform: translateY(-1px); }
+    .task-item.done-task { opacity: .55; }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .task-check {
+      width: 20px; height: 20px; border: 2px solid var(--border);
+      border-radius: 50%; cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .2s; background: transparent;
+    }
+    .task-check:hover { border-color: var(--green); }
+    .task-check.checked { background: var(--green); border-color: var(--green); }
+    .task-check.checked::after { content: "✓"; color: #0f0f11; font-size: 11px; font-weight: 700; }
+
+    .task-body { flex: 1; min-width: 0; }
+    .task-title { font-weight: 500; margin-bottom: 4px; }
+    .task-item.done-task .task-title { text-decoration: line-through; }
+    .task-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+    .badge {
+      font-size: 11px; padding: 2px 8px; border-radius: 20px;
+      font-weight: 600; letter-spacing: .3px;
+    }
+    .badge.todo       { background: #fbbf2420; color: var(--yellow); }
+    .badge.in-progress { background: #a78bfa20; color: var(--accent); }
+    .badge.done       { background: #34d39920; color: var(--green);  }
+    .badge.low        { background: #ffffff10; color: var(--muted);  }
+    .badge.medium     { background: #fbbf2415; color: var(--yellow); }
+    .badge.high       { background: #f8717120; color: var(--red);    }
+
+    .task-due { font-size: 12px; color: var(--sub); }
+    .task-due.overdue { color: var(--red); }
+
+    .task-actions { display: flex; gap: 6px; }
+    .action-btn {
+      width: 30px; height: 30px; border: none; border-radius: 6px;
+      background: transparent; cursor: pointer; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s; color: var(--sub);
+    }
+    .action-btn:hover { background: var(--border); color: var(--text); }
+    .action-btn.del:hover { background: #f8717120; color: var(--red); }
+
+    #empty-state {
+      text-align: center; padding: 64px 0; color: var(--muted); display: none;
+    }
+    #empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+    #empty-state p { font-size: 15px; }
+
+    /* ── Loading spinner ────────────────────────────── */
+    .spinner {
+      width: 20px; height: 20px; border: 2px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin .7s linear infinite; margin: 40px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast ──────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 28px; right: 28px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 20px;
+      font-size: 14px; display: none; z-index: 100;
+      box-shadow: 0 8px 32px #0006;
+      animation: toastIn .2s ease;
+    }
+    #toast.show { display: block; }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } }
+  </style>
+</head>
+<body>
+
+<!-- ── Auth ──────────────────────────────────────────── -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <h1>Task<span style="color:var(--accent)">Manager</span></h1>
+    <p>Organise your work, ship your goals.</p>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('login')">Login</button>
+      <button class="tab-btn" onclick="switchTab('register')">Register</button>
+    </div>
+
+    <div id="tab-login">
+      <div class="field"><label>Email</label><input id="login-email" type="email" placeholder="you@example.com" /></div>
+      <div class="field"><label>Password</label><input id="login-pass" type="password" placeholder="••••••••" /></div>
+      <button class="btn-primary" onclick="login()">Sign in</button>
+    </div>
+
+    <div id="tab-register" style="display:none">
+      <div class="field"><label>Name</label><input id="reg-name" type="text" placeholder="Your name" /></div>
+      <div class="field"><label>Email</label><input id="reg-email" type="email" placeholder="you@example.com" /></div>
+      <div class="field"><label>Password</label><input id="reg-pass" type="password" placeholder="Min. 6 characters" /></div>
+      <button class="btn-primary" onclick="register()">Create account</button>
+    </div>
+
+    <p id="auth-error"></p>
+  </div>
+</div>
+
+<!-- ── App ───────────────────────────────────────────── -->
+<div id="app-screen">
+  <header>
+    <div class="logo">Task<span>Manager</span></div>
+    <div class="header-right">
+      <span id="user-name"></span>
+      <button class="btn-ghost" onclick="logout()">Sign out</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat-card todo"><div class="num" id="cnt-todo">0</div><div class="label">To do</div></div>
+      <div class="stat-card prog"><div class="num" id="cnt-prog">0</div><div class="label">In progress</div></div>
+      <div class="stat-card done"><div class="num" id="cnt-done">0</div><div class="label">Completed</div></div>
+    </div>
+
+    <!-- Add task -->
+    <div class="add-form">
+      <input id="new-title" type="text" placeholder="New task title…" onkeydown="if(event.key==='Enter')addTask()" />
+      <select id="new-priority">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+      </select>
+      <input id="new-due" type="date" />
+      <button onclick="addTask()">+ Add task</button>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+      <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+      <button class="filter-btn" onclick="setFilter('todo', this)">To do</button>
+      <button class="filter-btn" onclick="setFilter('in-progress', this)">In progress</button>
+      <button class="filter-btn" onclick="setFilter('done', this)">Done</button>
+    </div>
+
+    <!-- Task list -->
+    <div id="task-list"></div>
+    <div id="empty-state">
+      <div class="icon">📋</div>
+      <p>No tasks yet — add one above!</p>
+    </div>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  const API = "/api"; // proxied by Nginx → backend:4000
+  let token = localStorage.getItem("tm_token") || null;
+  let currentUser = null;
+  let allTasks = [];
+  let activeFilter = "all";
+
+  // ── Helpers ───────────────────────────────────────
+  const $ = id => document.getElementById(id);
+  const toast = (msg, ms = 2800) => {
+    const el = $("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), ms);
+  };
+  const authHeaders = () => ({ "Content-Type": "application/json", Authorization: `Bearer ${token}` });
+
+  async function apiFetch(path, opts = {}) {
+    const res = await fetch(API + path, { ...opts, headers: { ...authHeaders(), ...(opts.headers || {}) } });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Request failed");
+    return data;
+  }
+
+  // ── Auth ──────────────────────────────────────────
+  function switchTab(tab) {
+    $("tab-login").style.display = tab === "login" ? "" : "none";
+    $("tab-register").style.display = tab === "register" ? "" : "none";
+    document.querySelectorAll(".tab-btn").forEach((b, i) =>
+      b.classList.toggle("active", (i === 0 && tab === "login") || (i === 1 && tab === "register"))
+    );
+    $("auth-error").textContent = "";
+  }
+
+  async function login() {
+    const email = $("login-email").value.trim();
+    const password = $("login-pass").value;
+    try {
+      const data = await fetch(API + "/auth/login", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      }).then(r => r.json());
+      if (!data.token) throw new Error(data.message || "Login failed");
+      token = data.token;
+      localStorage.setItem("tm_token", token);
+      currentUser = data.user;
+      showApp();
+    } catch (err) { $("auth-error").textContent = err.message; }
+  }
+
+  async function register() {
+    const name = $("reg-name").value.trim();
+    const email = $("reg-email").value.trim();
+    const password = $("reg-pass").value;
+    try {
+      const data = await fetch(API + "/auth/register", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password })
+      }).then(r => r.json());
+      if (!data.token) throw new Error(data.message || "Registration failed");
+      token = data.token;
+      localStorage.setItem("tm_token", token);
+      currentUser = data.user;
+      showApp();
+    } catch (err) { $("auth-error").textContent = err.message; }
+  }
+
+  function logout() {
+    token = null;
+    localStorage.removeItem("tm_token");
+    $("app-screen").style.display = "none";
+    $("auth-screen").style.display = "flex";
+    allTasks = [];
+  }
+
+  // ── App ───────────────────────────────────────────
+  async function showApp() {
+    $("auth-screen").style.display = "none";
+    $("app-screen").style.display = "block";
+    if (!currentUser) {
+      try { const d = await apiFetch("/auth/me"); currentUser = d.user; } catch { return logout(); }
+    }
+    $("user-name").textContent = currentUser.name;
+    await loadTasks();
+  }
+
+  async function loadTasks() {
+    $("task-list").innerHTML = '<div class="spinner"></div>';
+    try {
+      const { tasks } = await apiFetch("/tasks");
+      allTasks = tasks;
+      renderTasks();
+    } catch { toast("Failed to load tasks"); }
+  }
+
+  function renderTasks() {
+    const list = $("task-list");
+    const filtered = activeFilter === "all" ? allTasks : allTasks.filter(t => t.status === activeFilter);
+
+    // Update stats
+    $("cnt-todo").textContent = allTasks.filter(t => t.status === "todo").length;
+    $("cnt-prog").textContent = allTasks.filter(t => t.status === "in-progress").length;
+    $("cnt-done").textContent = allTasks.filter(t => t.status === "done").length;
+
+    if (filtered.length === 0) {
+      list.innerHTML = "";
+      $("empty-state").style.display = "block";
+      return;
+    }
+    $("empty-state").style.display = "none";
+
+    list.innerHTML = filtered.map(task => {
+      const due = task.dueDate ? new Date(task.dueDate) : null;
+      const overdue = due && due < new Date() && task.status !== "done";
+      const dueStr = due ? `<span class="task-due ${overdue ? "overdue" : ""}">
+        ${overdue ? "⚠ " : ""}Due ${due.toLocaleDateString()}
+      </span>` : "";
+      return `
+      <div class="task-item ${task.status === "done" ? "done-task" : ""}" id="task-${task._id}">
+        <div class="task-check ${task.status === "done" ? "checked" : ""}"
+          onclick="toggleDone('${task._id}', '${task.status}')"></div>
+        <div class="task-body">
+          <div class="task-title">${escHtml(task.title)}</div>
+          <div class="task-meta">
+            <span class="badge ${task.status}">${task.status}</span>
+            <span class="badge ${task.priority}">${task.priority}</span>
+            ${dueStr}
+          </div>
+        </div>
+        <div class="task-actions">
+          <button class="action-btn" title="Mark in-progress"
+            onclick="setStatus('${task._id}', 'in-progress')">▶</button>
+          <button class="action-btn del" title="Delete"
+            onclick="deleteTask('${task._id}')">✕</button>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function setFilter(f, btn) {
+    activeFilter = f;
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    renderTasks();
+  }
+
+  async function addTask() {
+    const title = $("new-title").value.trim();
+    if (!title) return;
+    const priority = $("new-priority").value;
+    const dueDate = $("new-due").value || undefined;
+    try {
+      const { task } = await apiFetch("/tasks", {
+        method: "POST",
+        body: JSON.stringify({ title, priority, dueDate })
+      });
+      allTasks.unshift(task);
+      $("new-title").value = "";
+      $("new-due").value = "";
+      renderTasks();
+      toast("Task added ✓");
+    } catch (err) { toast("Error: " + err.message); }
+  }
+
+  async function toggleDone(id, current) {
+    const newStatus = current === "done" ? "todo" : "done";
+    await setStatus(id, newStatus);
+  }
+
+  async function setStatus(id, status) {
+    try {
+      const { task } = await apiFetch(`/tasks/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status })
+      });
+      allTasks = allTasks.map(t => t._id === id ? task : t);
+      renderTasks();
+    } catch (err) { toast("Update failed: " + err.message); }
+  }
+
+  async function deleteTask(id) {
+    try {
+      await apiFetch(`/tasks/${id}`, { method: "DELETE" });
+      allTasks = allTasks.filter(t => t._id !== id);
+      renderTasks();
+      toast("Task deleted");
+    } catch (err) { toast("Delete failed: " + err.message); }
+  }
+
+  // ── Bootstrap ─────────────────────────────────────
+  if (token) {
+    $("auth-screen").style.display = "none";
+    showApp();
+  }
+</script>
+</body>
+</html>
