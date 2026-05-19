@@ -1,4 +1,5 @@
 # notification-service/notifier.py
+# flake8: noqa: E501
 """
 Lightweight Flask micro-service that sends transactional emails
 via SMTP whenever the backend emits a task event.
